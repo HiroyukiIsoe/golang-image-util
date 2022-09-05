@@ -6,10 +6,12 @@ import (
 	"image/draw"
 	_ "image/gif"
 	"image/jpeg"
-	_ "image/jpeg"
+
+	// _ "image/jpeg"
 	_ "image/png"
 	"os"
 
+	"github.com/esimov/stackblur-go"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobold"
@@ -42,6 +44,18 @@ func main() {
 	fmt.Println(image.Rect(sx, sy, ex, ey))
 	draw.Draw(drawImg, image.Rect(sx, sy, ex, ey), img, image.Point{0, 0}, draw.Over)
 
+	// ぼかし画像
+	blurredImg, err := stackblur.Process(drawImg, uint32(40))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err := saveImgFile(blurredImg, "blurred_out"); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	ft, err := truetype.Parse(gobold.TTF)
 	if err != nil {
 		fmt.Println(err)
@@ -69,16 +83,24 @@ func main() {
 	fdr.Dot.X = fixed.I(0)
 	fdr.Dot.Y = fixed.I(90)
 
-	fdr.DrawString("2022 Logo Sample")
+	fdr.DrawString("2022 Logo Sample😁")
 
-	out, err := os.Create("out.jpg")
-	if err != nil {
+	if err := saveImgFile(drawImg, "blurred_out"); err != nil {
 		fmt.Println(err)
 		return
+	}
+}
+
+func saveImgFile(img image.Image, nm string) error {
+	out, err := os.Create(nm + ".jpg")
+	if err != nil {
+		return err
 	}
 	defer out.Close()
-	if err := jpeg.Encode(out, drawImg, nil); err != nil {
+
+	if err := jpeg.Encode(out, img, nil); err != nil {
 		fmt.Println(err)
-		return
+		return err
 	}
+	return nil
 }
