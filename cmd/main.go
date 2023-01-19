@@ -6,7 +6,9 @@ import (
 	"image/draw"
 	_ "image/gif"
 	"image/jpeg"
-	"io/ioutil"
+	"io"
+	"path/filepath"
+	"time"
 
 	// _ "image/jpeg"
 	_ "image/png"
@@ -48,6 +50,11 @@ func main() {
 		return
 	}
 
+	if err := drawTextOnImage(blurredImg, "Logo Sample.ロゴ サンプル"); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	if err := saveImgFile(blurredImg, "blurred_out"); err != nil {
 		fmt.Println(err)
 		return
@@ -64,10 +71,8 @@ func main() {
 	}
 }
 
-// TODO:imgの型はimage.RGBAとしているが、image.Image型が望ましい
-//      そのためには、imgをdraw.Imageに型変換する必要がある
-func drawTextOnImage(img *image.RGBA, text string) error {
-	jpFontBin, err := ioutil.ReadFile("assets/fonts/ipaexg.ttf")
+func drawTextOnImage(img draw.Image, text string) error {
+	jpFontBin, err := os.ReadFile("assets/fonts/ipaexg.ttf")
 	if err != nil {
 		return err
 	}
@@ -103,7 +108,9 @@ func drawTextOnImage(img *image.RGBA, text string) error {
 }
 
 func saveImgFile(img image.Image, nm string) error {
-	out, err := os.Create("tmp/" + nm + ".jpg")
+	path := "tmp/" + nm + ".jpg"
+	// backUpCopyFile(path)
+	out, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -114,4 +121,33 @@ func saveImgFile(img image.Image, nm string) error {
 		return err
 	}
 	return nil
+}
+
+func backUpCopyFile(path string) error {
+	src, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	dstFilePath := backUpFileName(path)
+	dst, err := os.Create(dstFilePath)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
+	_, err = io.Copy(src, dst)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func backUpFileName(src string) string {
+	if src == "" {
+		return src
+	}
+	now := time.Now()
+	return filepath.Join(filepath.Dir(src), now.Format("20060102150405_") + filepath.Base(src))
 }
