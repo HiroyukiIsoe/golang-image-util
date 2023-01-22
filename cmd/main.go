@@ -23,7 +23,7 @@ func main() {
 	var originalFilePath string
 	var drawText string
 	var isBlur bool
-	flag.StringVar(&originalFilePath, "f", "", "originalFilePath")
+	flag.StringVar(&originalFilePath, "file", "", "originalFilePath")
 	flag.StringVar(&drawText, "text", "", "drawText")
 	flag.BoolVar(&isBlur, "blur", false, "isBlur")
 	flag.Parse()
