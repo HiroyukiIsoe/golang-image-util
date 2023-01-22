@@ -1,18 +1,17 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	"image/draw"
 	_ "image/gif"
 	"image/jpeg"
+	_ "image/png"
 	"io"
+	"os"
 	"path/filepath"
 	"time"
-
-	// _ "image/jpeg"
-	_ "image/png"
-	"os"
 
 	"github.com/esimov/stackblur-go"
 	"github.com/golang/freetype/truetype"
@@ -21,7 +20,19 @@ import (
 )
 
 func main() {
-	imgFile, err := os.Open("assets/images/go_front.png")
+	var originalFilePath string
+	var drawText string
+	var isBlur bool
+	flag.StringVar(&originalFilePath, "f", "", "originalFilePath")
+	flag.StringVar(&drawText, "text", "", "drawText")
+	flag.BoolVar(&isBlur, "blur", false, "isBlur")
+	flag.Parse()
+
+	convertToOgp(originalFilePath, drawText, isBlur)
+}
+
+func convertToOgp(inputFile string, drawText string, isBlur bool) {
+	imgFile, err := os.Open(inputFile)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -34,41 +45,42 @@ func main() {
 		return
 	}
 	
-	drawImg := image.NewRGBA(image.Rect(0, 0, 1200, 630))
+	var drawImg draw.Image = image.NewRGBA(image.Rect(0, 0, 1200, 630))
+	position := calcImagePosition(img.Bounds())
 
-	sx := 600 - 280
-	ex := 600 + 280
-	sy := 315 - 280
-	ey := 315 + 280
+	draw.Draw(drawImg, position, img, image.Point{0, 0}, draw.Over)
 
-	draw.Draw(drawImg, image.Rect(sx, sy, ex, ey), img, image.Point{0, 0}, draw.Over)
+	if isBlur {
+			// 画像ぼかし処理
+			drawImg, err = stackblur.Process(drawImg, uint32(40))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
 
-	// 画像ぼかし処理
-	blurredImg, err := stackblur.Process(drawImg, uint32(40))
-	if err != nil {
+	if err := drawTextOnImage(drawImg, drawText); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	if err := drawTextOnImage(blurredImg, "Logo Sample.ロゴ サンプル"); err != nil {
-		fmt.Println(err)
-		return
-	}
+	now := time.Now()
 
-	if err := saveImgFile(blurredImg, "blurred_out"); err != nil {
+	if err := saveImgFile(drawImg, "out" + now.Format("_20060102150405")); err != nil {
 		fmt.Println(err)
 		return
 	}
+}
 
-	if err := drawTextOnImage(drawImg, "Logo Sample.ロゴ サンプル"); err != nil {
-		fmt.Println(err)
-		return
-	}
+func calcImagePosition(baseRect image.Rectangle) image.Rectangle {
+	dx := baseRect.Dx()
+	dy := baseRect.Dy()
+	sx := 600 - (dx / 2)
+	ex := 600 + (dx / 2)
+	sy := 315 - (dy / 2)
+	ey := 315 + (dy / 2)
 
-	if err := saveImgFile(drawImg, "out"); err != nil {
-		fmt.Println(err)
-		return
-	}
+	return image.Rect(sx, sy, ex, ey)
 }
 
 func drawTextOnImage(img draw.Image, text string) error {
