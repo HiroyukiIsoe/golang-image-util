@@ -4,13 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"image-util/internal/s3"
 	"image/draw"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
-	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/esimov/stackblur-go"
@@ -66,10 +65,20 @@ func convertToOgp(inputFile string, drawText string, isBlur bool) {
 
 	now := time.Now()
 
-	if err := saveImgFile(drawImg, "out" + now.Format("_20060102150405")); err != nil {
+	name := "out" + now.Format("_20060102150405")
+
+	if err := saveImgFile(drawImg, name); err != nil {
 		fmt.Println(err)
 		return
 	}
+
+	out, err := os.Open("tmp/" + name + ".jpg")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer out.Close()
+	s3.Upload(name + ".jpg", out)
 }
 
 func calcImagePosition(baseRect image.Rectangle) image.Rectangle {
@@ -133,33 +142,4 @@ func saveImgFile(img image.Image, nm string) error {
 		return err
 	}
 	return nil
-}
-
-func backUpCopyFile(path string) error {
-	src, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	dstFilePath := backUpFileName(path)
-	dst, err := os.Create(dstFilePath)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(src, dst)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func backUpFileName(src string) string {
-	if src == "" {
-		return src
-	}
-	now := time.Now()
-	return filepath.Join(filepath.Dir(src), now.Format("20060102150405_") + filepath.Base(src))
 }
